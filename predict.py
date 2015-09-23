@@ -24,6 +24,7 @@ title = {
 }
 female_ratio, male_ratio = 0, 0
 pclass_survived_ratio = [.62962962963, .472826086957, .242362525458]
+label = []
 
 def get_title(title):
     x = title.split(',')[1]
@@ -62,60 +63,100 @@ def test_data(train_data):
     male_survived = len(data[(data['Sex'] == 'male') * (data['Survived'] == 1)])
     male_total = len(data[data['Sex'] == 'male'])
     male_ratio = male_survived * 1.0 / male_total
-    print male_ratio, male_survived, male_total
-    print female_ratio, female_survived, female_total
+    # print male_ratio, male_survived, male_total
+    # print female_ratio, female_survived, female_total
     for i in range(1,4):
         total =len(data[data.Pclass == i])
         num = len(data[(data.Pclass == i) & (data.Survived == 1)])
         print 'PClass {} survived ratio is {}'.format(i, num * 1.0 / total)
 
-def process_data(test_data):
+def process_train_data(test_data):
     data = pd.read_csv(test_data, header = 0)
     global ids, female_ratio, male_ratio
     ids = data.values[:,0]
     data.Embarked[data.Embarked.isnull()] = data.Embarked.dropna().mode().values
-
-    # data.Age[data.Age.isnull()] = data.Age.dropna().mean()
+    # sex_survived:cal the ratio of each sex
     data['sex_survived'] = data.Sex.map(lambda x:female_ratio if x =='female' else male_ratio)
-    # data['is_child'] = data.Age.map(lambda x: 1 if x <= 13 else 0)
+    # AgeCat:map different Age to different class
     data['AgeCat'] = data.Age.map(lambda x:changeAge(x))
+    # title: split title
     data['title'] = data.Name.map(lambda x:get_title(x))
+    # title: union title
     data.title = data.title.map(lambda x:new_title(x))
-    # data['pclass_survived'] = data.Pclass.map(lambda x:pclass_survived_ratio[x - 1])
+    # process missing age : use the mean num of each title
     global diff_age
     diff_age['Mr'] = data[(data['title'] == 'Mr')].Age.dropna().mean()
     diff_age['Miss'] = data[(data['title'] == 'Miss')].Age.dropna().mean()
     diff_age['Mrs'] = data[(data['title'] == 'Mrs')].Age.dropna().mean()
     diff_age['Master'] = data[(data['title'] == 'Master')].Age.dropna().mean()
-    # print diff_age
     data.loc[(data.title == 'Mr') & (data.Age.isnull()), 'Age'] = diff_age['Mr']
     data.loc[(data.title == 'Miss') & (data.Age.isnull()), 'Age'] = diff_age['Miss']
     data.loc[(data.title == 'Mrs') & (data.Age.isnull()), 'Age'] = diff_age['Mrs']
     data.loc[(data.title == 'Master') & (data.Age.isnull()), 'Age'] = diff_age['Master']
+    # title : map string to int
     data.title = data.title.map(lambda x:title[x])
+    # sex : map string to int
     data.Sex = data.Sex.map(lambda x: 1 if x == 'male' else 0)
+    # family_size
     data['Family_Size'] = data.SibSp + data.Parch + 1
+    # process missing Fara : use the mean num of each pclass
     for i in range(1,4):
-        print data[data.Pclass == i].Fare.dropna().mean()
         data.loc[(data.Pclass == i) & (data.Fare.isnull()), 'Fare'] = data[(data.Pclass == i)].Fare.dropna().mean()
+    # FPP:Fara per person, total Fare div Family_Size
     data['FPP'] = data.Fare / data.Family_Size
     global port
+    # Embarked:map string to int
     data.Embarked = data.Embarked.map(lambda x:port[x])
+    # is_alone:
     data['is_alone'] = data.Family_Size.map(lambda x:0 if x == 1 else 1)
     data = data.drop(['Name', 'PassengerId', 'Ticket', 'Cabin', 'SibSp', 'Parch'], axis=1)
-    # print len(data.columns)
-    # print data.values[0::,1] * data.values[0::,2]
-    x = len(data.columns)
-    for i in range(x):
-        for j in range(x):
-            if str(data.columns[i]) == 'Survived' or str(data.columns[j]) == 'Survived':
-                continue
-            name = str(data.columns[i]) + str(data.columns[j])
-            data[name] = data.values[0::, i] * data.values[0::, j]
-    # data.Fare[data.Fare.isnull()] = data.Fare.dropna().mean()
+    train_data_x = data.values[0::, 1::]
+    train_data_y = data.values[0::, 0]
+    data = data.drop(['Survived'], axis = 1)
+    global label
+    label = data.keys()
+    return train_data_x, train_data_y
 
-    # print data.head(20)
-    # print data.info()
+def process_test_data(test_data):
+    data = pd.read_csv(test_data, header = 0)
+    global ids, female_ratio, male_ratio
+    ids = data.values[:,0]
+    data.Embarked[data.Embarked.isnull()] = data.Embarked.dropna().mode().values
+    # sex_survived:cal the ratio of each sex
+    data['sex_survived'] = data.Sex.map(lambda x:female_ratio if x =='female' else male_ratio)
+    # AgeCat:map different Age to different class
+    data['AgeCat'] = data.Age.map(lambda x:changeAge(x))
+    # title: split title
+    data['title'] = data.Name.map(lambda x:get_title(x))
+    # title: union title
+    data.title = data.title.map(lambda x:new_title(x))
+    # process missing age : use the mean num of each title
+    global diff_age
+    diff_age['Mr'] = data[(data['title'] == 'Mr')].Age.dropna().mean()
+    diff_age['Miss'] = data[(data['title'] == 'Miss')].Age.dropna().mean()
+    diff_age['Mrs'] = data[(data['title'] == 'Mrs')].Age.dropna().mean()
+    diff_age['Master'] = data[(data['title'] == 'Master')].Age.dropna().mean()
+    data.loc[(data.title == 'Mr') & (data.Age.isnull()), 'Age'] = diff_age['Mr']
+    data.loc[(data.title == 'Miss') & (data.Age.isnull()), 'Age'] = diff_age['Miss']
+    data.loc[(data.title == 'Mrs') & (data.Age.isnull()), 'Age'] = diff_age['Mrs']
+    data.loc[(data.title == 'Master') & (data.Age.isnull()), 'Age'] = diff_age['Master']
+    # title : map string to int
+    data.title = data.title.map(lambda x:title[x])
+    # sex : map string to int
+    data.Sex = data.Sex.map(lambda x: 1 if x == 'male' else 0)
+    # family_size
+    data['Family_Size'] = data.SibSp + data.Parch + 1
+    # process missing Fara : use the mean num of each pclass
+    for i in range(1,4):
+        data.loc[(data.Pclass == i) & (data.Fare.isnull()), 'Fare'] = data[(data.Pclass == i)].Fare.dropna().mean()
+    # FPP:Fara per person, total Fare div Family_Size
+    data['FPP'] = data.Fare / data.Family_Size
+    global port
+    # Embarked:map string to int
+    data.Embarked = data.Embarked.map(lambda x:port[x])
+    # is_alone:
+    data['is_alone'] = data.Family_Size.map(lambda x:0 if x == 1 else 1)
+    data = data.drop(['Name', 'PassengerId', 'Ticket', 'Cabin', 'SibSp', 'Parch'], axis=1)
     return data.values
 
 def WriteFile(name, out):
@@ -126,48 +167,46 @@ def WriteFile(name, out):
     open_file_object.writerows(zip(ids, out))
     predictions_file.close()
 
-def RandomForest(train_data, test_data):
-    forest = RandomForestClassifier(n_estimators=100)
-    forest = forest.fit(train_data[0::, 1::], train_data[0::,0])
+
+def RandomForest(train_data_x, train_data_y, test_data):
+    forest = RandomForestClassifier(n_estimators=1000)
+    forest = forest.fit(train_data_x, train_data_y)
     out = forest.predict(test_data).astype(int)
-    WriteFile('./result/randomforest.csv', out)
+    # WriteFile('./result/randomforest.csv', out)
+    return out
 
-def Linear(train_data, test_data):
+def Linear(train_data_x, train_data_y, test_data):
     linear = linear_model.LinearRegression()
-    linear.fit(train_data[0::, 1::] , train_data[0::, 0])
+    linear.fit(train_data_x, train_data_y)
     out = linear.predict(test_data).astype(int)
-    WriteFile('./result/linearegressio.csv', out)
+    # WriteFile('./result/linearegressio.csv', out)
+    return out
 
-def Knn(train_data, test_data):
+def Knn(train_data_x, train_data_y, test_data):
     knn = neighbors.KNeighborsClassifier()
-    knn.fit(train_data[0::, 1::], train_data[0::, 0])
+    knn.fit(train_data_x, train_data_y)
     out = knn.predict(test_data).astype(int)
-    WriteFile('./result/Knn.csv', out)
+    # WriteFile('./result/Knn.csv', out)
+    return out
 
-def Svm(train_data, test_data, mode):
+def Svm(train_data_x, train_data_y, test_data, mode):
     svm_model = svm.SVC(kernel = mode)
-    svm_model.fit(train_data[0::, 1::], train_data[0::, 0])
+    svm_model.fit(train_data_x, train_data_y)
     out = svm_model.predict(test_data).astype(int)
-    WriteFile('./result/Svm{}.csv'.format(mode), out)
+    # WriteFile('./result/Svm{}.csv'.format(mode), out)
+    return out
 
 if __name__ == '__main__':
     # get_title('Ahlin, Mrs. Johan (Johanna Persdotter Larsson)')
     test_data('./data/train.csv')
     print 'training...........'
-    train_data = process_data('./data/train.csv')
-    test_data = process_data('./data/test.csv')
+    train_data_x, train_data_y = process_train_data('./data/train.csv')
+    test_data = process_test_data('./data/test.csv')
     print 'predict...........'
-    RandomForest(train_data, test_data)
+    out = RandomForest(train_data_x, train_data_y, test_data)
+    WriteFile('./result/RandomForest.csv', out)
     print 'done............'
-    # Linear(train_data, test_data)
-    # Knn(train_data, test_data)
-    # Svm(train_data, test_data, 'linear')
-    # Svm(train_data, test_data, 'rbf')
-    # for k in diff_title.keys():
-    #     print k
 
-    # # print time.time()
-    # # # print train_data.describe()
 
     # score = []
     # for tree in range(1,200):
