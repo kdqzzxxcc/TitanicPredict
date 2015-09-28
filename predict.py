@@ -93,6 +93,11 @@ def process_train_data(test_data):
     data.loc[(data.title == 'Miss') & (data.Age.isnull()), 'Age'] = diff_age['Miss']
     data.loc[(data.title == 'Mrs') & (data.Age.isnull()), 'Age'] = diff_age['Mrs']
     data.loc[(data.title == 'Master') & (data.Age.isnull()), 'Age'] = diff_age['Master']
+    #
+    data['Age_bin'] = pd.qcut(data.Age, 4)
+    # print data.head(10)
+    data = pd.concat([data, pd.get_dummies(data['Age_bin']).rename(columns=lambda x:str(x))], axis=1)
+    # print data.head(10)
     # title : map string to int
     data.title = data.title.map(lambda x:title[x])
     # sex : map string to int
@@ -109,7 +114,7 @@ def process_train_data(test_data):
     data.Embarked = data.Embarked.map(lambda x:port[x])
     # is_alone:
     data['is_alone'] = data.Family_Size.map(lambda x:0 if x == 1 else 1)
-    data = data.drop(['Name', 'PassengerId', 'Ticket', 'Cabin', 'SibSp', 'Parch'], axis=1)
+    data = data.drop(['Name', 'PassengerId', 'Ticket', 'Cabin', 'SibSp', 'Parch', 'Age', 'Age_bin'], axis=1)
     train_data_x = data.values[0::, 1::]
     train_data_y = data.values[0::, 0]
     data = data.drop(['Survived'], axis = 1)
@@ -140,6 +145,9 @@ def process_test_data(test_data):
     data.loc[(data.title == 'Miss') & (data.Age.isnull()), 'Age'] = diff_age['Miss']
     data.loc[(data.title == 'Mrs') & (data.Age.isnull()), 'Age'] = diff_age['Mrs']
     data.loc[(data.title == 'Master') & (data.Age.isnull()), 'Age'] = diff_age['Master']
+    data['Age_bin'] = pd.qcut(data.Age, 4)
+    # print data.head(10)
+    data = pd.concat([data, pd.get_dummies(data['Age_bin']).rename(columns=lambda x:str(x))], axis=1)
     # title : map string to int
     data.title = data.title.map(lambda x:title[x])
     # sex : map string to int
@@ -156,7 +164,7 @@ def process_test_data(test_data):
     data.Embarked = data.Embarked.map(lambda x:port[x])
     # is_alone:
     data['is_alone'] = data.Family_Size.map(lambda x:0 if x == 1 else 1)
-    data = data.drop(['Name', 'PassengerId', 'Ticket', 'Cabin', 'SibSp', 'Parch'], axis=1)
+    data = data.drop(['Name', 'PassengerId', 'Ticket', 'Cabin', 'SibSp', 'Parch','Age', 'Age_bin'], axis=1)
     return data.values
 
 def WriteFile(name, out):
