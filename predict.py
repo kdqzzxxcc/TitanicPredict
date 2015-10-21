@@ -8,6 +8,8 @@ import time
 from sklearn.ensemble import RandomForestClassifier
 from sklearn import linear_model, neighbors, svm
 import matplotlib.pyplot as plt
+from sklearn import cross_validation
+from sklearn.externals import joblib
 port = {
     'S':1,
     'C':2,
@@ -74,7 +76,8 @@ def process_train_data(test_data):
     data = pd.read_csv(test_data, header = 0)
     global ids, female_ratio, male_ratio
     ids = data.values[:,0]
-    data.Embarked[data.Embarked.isnull()] = data.Embarked.dropna().mode().values
+    data.loc[data.Embarked.isnull(), 'Embarked'] = data.Embarked.dropna().mode().values
+    # data.Embarked[data.Embarked.isnull()] = data.Embarked.dropna().mode().values
     # sex_survived:cal the ratio of each sex
     data['sex_survived'] = data.Sex.map(lambda x:female_ratio if x =='female' else male_ratio)
     # AgeCat:map different Age to different class
@@ -126,7 +129,8 @@ def process_test_data(test_data):
     data = pd.read_csv(test_data, header = 0)
     global ids, female_ratio, male_ratio
     ids = data.values[:,0]
-    data.Embarked[data.Embarked.isnull()] = data.Embarked.dropna().mode().values
+    data.loc[data.Embarked.isnull(), 'Embarked'] = data.Embarked.dropna().mode().values
+    # data.Embarked[data.Embarked.isnull()] = data.Embarked.dropna().mode().values
     # sex_survived:cal the ratio of each sex
     data['sex_survived'] = data.Sex.map(lambda x:female_ratio if x =='female' else male_ratio)
     # AgeCat:map different Age to different class
@@ -177,15 +181,17 @@ def WriteFile(name, out):
 
 
 def RandomForest(train_data_x, train_data_y, test_data):
-    forest = RandomForestClassifier(n_estimators=1000)
+    forest = RandomForestClassifier(n_estimators=100)
     forest = forest.fit(train_data_x, train_data_y)
     out = forest.predict(test_data).astype(int)
+    joblib.dump(forest, './result/model.pkl')
     # WriteFile('./result/randomforest.csv', out)
     return out
 
 def Linear(train_data_x, train_data_y, test_data):
     linear = linear_model.LinearRegression()
     linear.fit(train_data_x, train_data_y)
+
     out = linear.predict(test_data).astype(int)
     # WriteFile('./result/linearegressio.csv', out)
     return out
@@ -214,8 +220,11 @@ if __name__ == '__main__':
     out = RandomForest(train_data_x, train_data_y, test_data)
     WriteFile('./result/RandomForest.csv', out)
     print 'done............'
-
-
+    kfold = cross_validation.KFold(len(train_data_y), n_folds = 8, shuffle = True)
+    model = joblib.load('./result/model.pkl')
+    scores = cross_validation.cross_val_score(estimator=model, cv=kfold, n_jobs=4, X=train_data_x, y=train_data_y)
+    print scores
+    print sum(scores) / len(scores)
     # score = []
     # for tree in range(1,200):
     #     model = RandomForestClassifier(n_estimators=tree)

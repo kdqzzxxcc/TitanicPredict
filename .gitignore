@@ -58,3 +58,9 @@ target/
 
 # PyCharm
 .idea/
+
+# numpy
+
+result/*.npy
+result/*.pkl
+result/*.csv
