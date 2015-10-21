@@ -55,7 +55,8 @@ def process_train_data(test_data):
     data = pd.read_csv(test_data, header = 0)
     global ids, female_ratio, male_ratio
     ids = data.values[:,0]
-    data.Embarked[data.Embarked.isnull()] = data.Embarked.dropna().mode().values
+    data.loc[(data.Embarked.isnull()), 'Embarked'] = data.Embarked.dropna().mode().values
+    # data.Embarked[data.Embarked.isnull()] = data.Embarked.dropna().mode().values
     # sex_survived:cal the ratio of each sex
     data['sex_survived'] = data.Sex.map(lambda x:female_ratio if x =='female' else male_ratio)
     # AgeCat:map different Age to different class
